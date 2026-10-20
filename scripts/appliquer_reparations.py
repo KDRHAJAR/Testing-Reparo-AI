@@ -2,8 +2,15 @@
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
+
+
+def cellule(localisateur):
+    """Le localisateur comme cellule entière d'une ligne Robot (séparée par 2 espaces ou une tabulation).
+    Ainsi, le même texte dans une Documentation ou un commentaire n'est pas modifié."""
+    return re.compile(r"(?:(?<=  )|(?<=\t))" + re.escape(localisateur) + r"(?=  |\t|$)", re.MULTILINE)
 
 
 def appliquer(reparations, racine="."):
@@ -12,8 +19,9 @@ def appliquer(reparations, racine="."):
     for r in reparations:
         chemin = Path(racine) / r["fichier"]
         contenu = chemin.read_text(encoding="utf-8")
-        if r["ancien_localisateur"] in contenu:
-            chemin.write_text(contenu.replace(r["ancien_localisateur"], r["nouveau_localisateur"]), encoding="utf-8")
+        nouveau_contenu, nombre = cellule(r["ancien_localisateur"]).subn(r["nouveau_localisateur"], contenu)
+        if nombre:
+            chemin.write_text(nouveau_contenu, encoding="utf-8")
             modifies.add(r["fichier"])
     return sorted(modifies)
 

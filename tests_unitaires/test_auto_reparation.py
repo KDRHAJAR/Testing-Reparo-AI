@@ -137,6 +137,34 @@ def test_appliquer_corrige_le_fichier_robot(tmp_path):
     assert "Vérifie chaque ligne" in corps
 
 
+def test_appliquer_ne_touche_pas_a_la_documentation(tmp_path):
+    (tmp_path / "tests").mkdir()
+    robot = tmp_path / "tests" / "connexion.robot"
+    robot.write_text(
+        "Documentation     Démo\n"
+        "...               (id=login-buton au lieu de id=login-button) pour démontrer.\n"
+        "    Cliquer Avec Auto Reparation    id=login-buton   Bouton\n"
+        "    Click Element\tid=login-buton\n",
+        encoding="utf-8",
+    )
+    reparations = [{"fichier": "tests/connexion.robot", "ancien_localisateur": "id=login-buton",
+                    "nouveau_localisateur": "id=login-button"}]
+    script.appliquer(reparations, racine=tmp_path)
+    lignes = robot.read_text(encoding="utf-8").splitlines()
+    assert lignes[1] == "...               (id=login-buton au lieu de id=login-button) pour démontrer."
+    assert lignes[2] == "    Cliquer Avec Auto Reparation    id=login-button   Bouton"
+    assert lignes[3] == "    Click Element\tid=login-button"
+
+
+def test_appliquer_ne_remplace_pas_un_localisateur_plus_long(tmp_path):
+    (tmp_path / "tests").mkdir()
+    robot = tmp_path / "tests" / "connexion.robot"
+    robot.write_text("    Click Element    id=login-buton-2\n", encoding="utf-8")
+    reparations = [{"fichier": "tests/connexion.robot", "ancien_localisateur": "id=login-buton",
+                    "nouveau_localisateur": "id=login-button"}]
+    assert script.appliquer(reparations, racine=tmp_path) == []
+
+
 def test_appliquer_sans_correspondance(tmp_path):
     (tmp_path / "tests").mkdir()
     (tmp_path / "tests" / "connexion.robot").write_text("rien\n", encoding="utf-8")

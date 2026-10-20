@@ -8,11 +8,14 @@ dans `healing.json`. Un second job applique la correction et ouvre une **Pull Re
 qui t'est assignée : GitHub t'envoie alors un email.
 
 ```
-Run workflow ─▶ job tnr0 : robot --include TNR0 ─▶ healing.json (artefact)
-                                                        │ si au moins 1 réparation
-                                                        ▼
-                job pull_request : corrige le .robot ─▶ branche + commit ─▶ Pull Request ─▶ email
+              PRÉPARATION                 CAMPAGNE                 RÉPARATION
+         ┌─────────────────┐
+Run  ──▶ │ tests_unitaires │──┐
+workflow │ dry_run_robot   │──┴──▶ tnr0 : robot --include TNR0 ──▶ pull_request ──▶ email
+         └─────────────────┘        (healing.json en artefact)    (si ≥ 1 réparation)
 ```
+
+`tnr0` ne démarre que si les tests unitaires et le dry run Robot ont réussi.
 
 ## Fichiers
 
@@ -20,7 +23,7 @@ Run workflow ─▶ job tnr0 : robot --include TNR0 ─▶ healing.json (artefac
 |---|---|
 | `libraries/SelfHealing.py` | Les mots-clés `Cliquer Avec Auto Reparation` et `Saisir Avec Auto Reparation` |
 | `tests/connexion.robot` | Le test unique, tag `TNR0` |
-| `scripts/appliquer_reparations.py` | Applique `healing.json` aux fichiers `.robot` et écrit le texte de la Pull Request |
+| `scripts/appliquer_reparations.py` | Applique `healing.json` aux fichiers `.robot` (seulement dans les cellules de mots-clés, jamais dans la Documentation) et écrit le texte de la Pull Request |
 | `.github/workflows/tnr0.yml` | Le workflow, lancé à la main |
 | `tests_unitaires/` | Les tests de la logique, avec un faux navigateur et un faux Gemini |
 
