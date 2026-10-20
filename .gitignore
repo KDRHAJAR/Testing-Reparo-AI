@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+.pytest_cache/
+results/
+pr_body.md
+.env

@@ -1,0 +1,4 @@
+robotframework>=7.0
+robotframework-seleniumlibrary>=6.5
+google-genai>=1.20
+pytest>=8.0

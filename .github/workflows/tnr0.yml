@@ -1,0 +1,82 @@
+name: Campagne TNR0 (auto-réparation)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tnr0:
+    name: Exécuter les tests TNR0
+    runs-on: ubuntu-latest
+    outputs:
+      reparations: ${{ steps.bilan.outputs.reparations }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer les dépendances
+        run: pip install -r requirements.txt
+
+      - name: Lancer la campagne TNR0
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.5-flash' }}
+        run: robot --include TNR0 --outputdir results tests
+
+      - name: Compter les réparations
+        id: bilan
+        if: always()
+        run: |
+          n=$(python -c "import json, os; p='results/healing.json'; print(len(json.load(open(p))) if os.path.exists(p) else 0)")
+          echo "reparations=$n" >> "$GITHUB_OUTPUT"
+          echo "Réparations : $n"
+
+      - name: Garder les rapports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultats-tnr0
+          path: results/
+
+  pull_request:
+    name: Proposer les corrections
+    needs: tnr0
+    if: always() && needs.tnr0.outputs.reparations != '' && needs.tnr0.outputs.reparations != '0'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: resultats-tnr0
+          path: results
+
+      - name: Appliquer les réparations aux fichiers .robot
+        run: python scripts/appliquer_reparations.py results/healing.json --corps pr_body.md
+
+      - name: Ouvrir la Pull Request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branche="auto-reparation/run-${{ github.run_id }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branche"
+          git add tests
+          git commit -m "Auto-réparation des localisateurs (campagne TNR0, run ${{ github.run_id }})"
+          git push origin "$branche"
+          gh pr create \
+            --base "${{ github.ref_name }}" \
+            --head "$branche" \
+            --title "Auto-réparation : localisateurs corrigés (run ${{ github.run_id }})" \
+            --body-file pr_body.md \
+            --assignee "${{ github.actor }}" \
+            --reviewer "${{ github.actor }}"
