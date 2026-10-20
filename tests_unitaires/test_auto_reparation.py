@@ -142,3 +142,43 @@ def test_appliquer_sans_correspondance(tmp_path):
     (tmp_path / "tests" / "connexion.robot").write_text("rien\n", encoding="utf-8")
     reparations = [{"fichier": "tests/connexion.robot", "ancien_localisateur": "id=x", "nouveau_localisateur": "id=y"}]
     assert script.appliquer(reparations, racine=tmp_path) == []
+
+
+class FausseConnexion:
+    ferme = False
+
+
+class FauxClientGemini:
+    """Imite le vrai client : il se ferme quand il est détruit (__del__) ou à la sortie du bloc with."""
+
+    def __init__(self):
+        connexion = self.connexion = FausseConnexion()
+        FauxClientGemini.derniere_connexion = connexion
+
+        def generate_content(**kwargs):
+            if connexion.ferme:
+                raise RuntimeError("Cannot send a request, as the client has been closed.")
+            return SimpleNamespace(text='{"localisateur": "id=login-button", "confiance": 0.93, "raison": "ok"}')
+
+        self.models = SimpleNamespace(generate_content=generate_content)
+
+    def close(self):
+        self.connexion.ferme = True
+
+    def __del__(self):
+        self.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
+
+def test_demander_gemini_garde_le_client_ouvert_pendant_la_requete(monkeypatch):
+    import SelfHealing as module
+
+    monkeypatch.setattr("google.genai.Client", FauxClientGemini)
+    proposition = module.demander_gemini("id=login-buton", "Bouton Login", "<button id='login-button'>")
+    assert proposition == {"localisateur": "id=login-button", "confiance": 0.93, "raison": "ok"}
+    assert FauxClientGemini.derniere_connexion.ferme  # fermé proprement APRÈS la requête

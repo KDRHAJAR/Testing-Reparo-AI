@@ -46,15 +46,18 @@ def demander_gemini(localisateur, description, html):
         f"Élément recherché : {description}\n"
         f"HTML de la page :\n{html}"
     )
-    reponse = genai.Client().models.generate_content(
-        model=MODELE,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=PROMPT_SYSTEME,
-            temperature=0,
-            response_mime_type="application/json",
-        ),
-    )
+    # Le client doit rester ouvert pendant la requête : il se ferme tout seul quand il est détruit.
+    with genai.Client() as client:
+        reponse = client.models.generate_content(
+            model=MODELE,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=PROMPT_SYSTEME,
+                temperature=0,
+                response_mime_type="application/json",
+                automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+            ),
+        )
     return json.loads(reponse.text)
 
 
