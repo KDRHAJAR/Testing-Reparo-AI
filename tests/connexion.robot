@@ -15,5 +15,5 @@ Connexion avec un utilisateur standard
     Open Browser    ${URL}    chrome    options=${OPTIONS}
     Saisir Avec Auto Reparation     id=user-name     standard_user    Champ nom d'utilisateur
     Saisir Avec Auto Reparation     id=password      secret_sauce     Champ mot de passe
-    Cliquer Avec Auto Reparation    id=login-buton   Bouton de connexion « Login »
+    Cliquer Avec Auto Reparation    id=login-button   Bouton de connexion « Login »
     Wait Until Page Contains Element    css=.inventory_list    10s
